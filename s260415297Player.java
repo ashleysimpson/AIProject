@@ -105,6 +105,9 @@ public class s260415297Player extends Player {
     		// counter for infinite moves
     		int infiniteCounter = 0;
     		
+    		// keep track of the next move location
+    		int nextMove = i;
+    		
     		// if invalid move then continue
     		if (board[0][i] < 2) {
     			continue;
@@ -119,21 +122,39 @@ public class s260415297Player extends Player {
     			bestMoveMoved = j;
     		}
     		
-    		// handles the most amount of seeds captured by a play 
+    		// handles the most amount of seeds captured by a play
     		int captureMade = captureAmount(i, board);
-    		updatedBoard = updateBoard(i,board);
+    		int previousCapture = captureMade;
     		
-    		// issue here, if capture made then start back from beginning!!!
-    		// if no capture then relay!!!
-    		// continue making movies until unable
-    		while (updatedBoard[0][(i + updatedBoard[0][(i+captureMade) % 16]) % 16] > 1) {
-    			if ((((i + updatedBoard[0][(i+captureMade) % 16]) % 16) > 7) && infiniteCounter <= 100) {
-    				captureMade = captureMade + captureAmount(i, updatedBoard);
-    				updatedBoard = updateBoard(i,updatedBoard);
-    				infiniteCounter++;
-    			} else {
-    				break;			
+    		// if a capture made then need to deal with different update of board
+    		updatedBoard = updateBoard(i,board);
+    		boolean previousWasACapture = captureMade > 0;
+    		
+    		// next move will be somewhere new in the board
+    		if (!previousWasACapture) {
+    			nextMove = (nextMove + board[0][i]) % 16;
+    		}
+    		
+    		// go through the relay and capture loop until the end
+    		while (updatedBoard[0][nextMove] > 0) {
+    			
+    			// play the move and update the board
+    			captureMade = captureMade + captureAmount(nextMove, updatedBoard);
+    			previousCapture = captureMade - previousCapture;
+    			
+    			// check for next move
+    			previousWasACapture = previousCapture > 0;
+    			if (!previousWasACapture) {
+    				nextMove = (nextMove + updatedBoard[0][nextMove]) % 16;
     			}
+    			
+    			// update the board after all work computed
+    			updatedBoard = updateBoard(nextMove, updatedBoard);
+
+    			// set previous for next round
+    			previousCapture = captureMade;
+    				
+    			infiniteCounter++;
     		}
     		
     		// make sure to make the best move
@@ -170,71 +191,79 @@ public class s260415297Player extends Player {
     	board[0][selection] = 0;
     	
     	// fill in pieces that get added as the move is taken
-    	for (int i = 1; i < selection; i++) {
+    	for (int i = 1; i < oldBoard[0][selection]; i++) {
     		board[0][(i+selection) % 16] = board[0][(i+selection) % 16] + 1;
     	}
     	
     	// check for each condition where capture occurs and update the board
     	// also update board where capture doesn't occur
 		if (lastPit == 15) {
-			if (board[0][15] > 0 && board[0][0] > 0 && board[1][8] > 0 && board[1][7] > 0) {
-				board[0][15] = board[0][15] + board[1][8] + board[1][7] + 1;
+			if (board[0][15] > 0 && board[1][8] > 0 && board[1][7] > 0) {
+				board[0][selection] = board[1][8] + board[1][7];
+				board[0][15] = board[0][15] + 1;
 				board[1][8] = 0;
 				board[1][7] = 0;
 			} else {
 				board[0][15] = board[0][15] + 1;
 			}
 		} else if (lastPit == 14) {
-			if (board[0][14] > 0 && board[0][1] > 0 && board[1][6] > 0 && board[1][9] > 0) {
-				board[0][14] = board[0][14] + board[1][6] + board[1][9] + 1;
+			if (board[0][14] > 0 && board[1][6] > 0 && board[1][9] > 0) {
+				board[0][selection] = board[1][6] + board[1][9];
+				board[0][14] = board[0][14] + 1;
 				board[1][6] = 0;
 				board[1][9] = 0;
 			} else {
 				board[0][14] = board[0][14] + 1;
 			}
 		} else if (lastPit == 13) {
-			if (board[0][13] > 0 && board[0][2] > 0 && board[1][5] > 0 && board[1][10] > 0) {
-				board[0][13] = board[0][13] + board[1][5] + board[1][10] + 1;
+			if (board[0][13] > 0 && board[1][5] > 0 && board[1][10] > 0) {
+				board[0][selection] = board[1][5] + board[1][10];
+				board[0][13] = board[0][13] + 1;
 				board[1][5] = 0;
 				board[1][10] = 0;
 			} else {
 				board[0][13] = board[0][13] + 1;
 			}
 		} else if (lastPit == 12) {
-			if (board[0][12] > 0 && board[0][3] > 0 && board[1][4] > 0 && board[1][11] > 0) {
-				board[0][12] = board[0][12] + board[1][4] + board[1][11] + 1;
+			if (board[0][12] > 0 && board[1][4] > 0 && board[1][11] > 0) {
+				board[0][selection] = board[1][4] + board[1][11];
+				board[0][12] = board[0][12] + 1;
 				board[1][4] = 0;
 				board[1][11] = 0;
 			} else {
 				board[0][12] = board[0][12] + 1;
 			}
 		} else if (lastPit == 11) {
-			if (board[0][11] > 0 && board[0][4] > 0 && board[1][3] > 0 && board[1][12] > 0) {
-				board[0][11] = board[0][11] + board[1][3] + board[1][12] + 1;
+			if (board[0][11] > 0 && board[1][3] > 0 && board[1][12] > 0) {
+				board[0][selection] = board[1][3] + board[1][12];
+				board[0][11] = board[0][11] + 1;
 				board[1][3] = 0;
 				board[1][12] = 0;
 			} else {
 				board[0][11] = board[0][11] + 1;
 			}
 		} else if (lastPit == 10) {
-			if (board[0][10] > 0 && board[0][5] > 0 && board[1][2] > 0 && board[1][13] > 0) {
-				board[0][10] = board[0][10] + board[1][2] + board[1][13] + 1;
+			if (board[0][10] > 0 && board[1][2] > 0 && board[1][13] > 0) {
+				board[0][selection] = board[1][2] + board[1][13];
+				board[0][10] = board[0][10] + 1;
 				board[1][2] = 0;
 				board[1][13] = 0;
 			} else {
 				board[0][10] = board[0][10] + 1;
 			}
 		} else if (lastPit == 9) {
-			if (board[0][9] > 0 && board[0][6] > 0 && board[1][1] > 0 && board[1][14] > 0) {
-				board[0][9] = board[0][9] + board[1][1] + board[1][14] + 1;
+			if (board[0][9] > 0 && board[1][1] > 0 && board[1][14] > 0) {
+				board[0][selection] = board[1][1] + board[1][14];
+				board[0][9] = board[0][9] + 1;
 				board[1][1] = 0;
 				board[1][14] = 0;
 			} else {
 				board[0][9] = board[0][9] + 1;
 			}
 		} else if (lastPit == 8) {
-			if (board[0][8] > 0 && board[0][7] > 0 && board[1][0] > 0 && board[1][15] > 0) {
-				board[0][8] = board[0][8] + board[1][0] + board[1][15] + 1;
+			if (board[0][8] > 0 && board[1][0] > 0 && board[1][15] > 0) {
+				board[0][selection] = board[1][0] + board[1][15];
+				board[0][8] = board[0][8] + 1;
 				board[1][0] = 0;
 				board[1][15] = 0;
 			} else {
@@ -269,35 +298,35 @@ public class s260415297Player extends Player {
     	
     	// check for each condition where capture occurs
 		if (lastPit == 15) {
-			if (board[0][15] > 0 && board[0][0] > 0 && board[1][8] > 0 && board[1][7] > 0) {
+			if (board[0][15] > 0 && board[1][8] > 0 && board[1][7] > 0) {
 				captured = board[1][8] + board[1][7];
 			}
 		} else if (lastPit == 14) {
-			if (board[0][14] > 0 && board[0][1] > 0 && board[1][6] > 0 && board[1][9] > 0) {
+			if (board[0][14] > 0 && board[1][6] > 0 && board[1][9] > 0) {
 				captured = board[1][6] + board[1][9];
 			}
 		} else if (lastPit == 13) {
-			if (board[0][13] > 0 && board[0][2] > 0 && board[1][5] > 0 && board[1][10] > 0) {
+			if (board[0][13] > 0 && board[1][5] > 0 && board[1][10] > 0) {
 				captured = board[1][5] + board[1][10];
 			}
 		} else if (lastPit == 12) {
-			if (board[0][12] > 0 && board[0][3] > 0 && board[1][4] > 0 && board[1][11] > 0) {
+			if (board[0][12] > 0 && board[1][4] > 0 && board[1][11] > 0) {
 				captured = board[1][4] + board[1][11];
 			}
 		} else if (lastPit == 11) {
-			if (board[0][11] > 0 && board[0][4] > 0 && board[1][3] > 0 && board[1][12] > 0) {
+			if (board[0][11] > 0 && board[1][3] > 0 && board[1][12] > 0) {
 				captured = board[1][3] + board[1][12];
 			}
 		} else if (lastPit == 10) {
-			if (board[0][10] > 0 && board[0][5] > 0 && board[1][2] > 0 && board[1][13] > 0) {
+			if (board[0][10] > 0 && board[1][2] > 0 && board[1][13] > 0) {
 				captured = board[1][2] + board[1][13];
 			}
 		} else if (lastPit == 9) {
-			if (board[0][9] > 0 && board[0][6] > 0 && board[1][1] > 0 && board[1][14] > 0) {
+			if (board[0][9] > 0 && board[1][1] > 0 && board[1][14] > 0) {
 				captured = board[1][1] + board[1][14];
 			}
 		} else if (lastPit == 8) {
-			if (board[0][8] > 0 && board[0][7] > 0 && board[1][0] > 0 && board[1][15] > 0) {
+			if (board[0][8] > 0 && board[1][0] > 0 && board[1][15] > 0) {
 				captured = board[1][0] + board[1][15];
 			}
 		} else {
