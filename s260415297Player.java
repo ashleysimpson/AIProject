@@ -67,16 +67,22 @@ public class s260415297Player extends Player {
 
             if(board_state.playFirst()){
                 // specific setup
-                initial_pits[7] = 23;
-                initial_pits[9] = 3;
-                initial_pits[10] = 3;
-                initial_pits[11] = 3;   
+            	initial_pits[8] = 7;
+            	initial_pits[9] = 4;
+            	initial_pits[10] = 4;
+            	initial_pits[11] = 3;
+            	initial_pits[12] = 3;
+            	initial_pits[13] = 2;
+            	initial_pits[14] = 9;
             }else{
-                // specific setup
-            	initial_pits[7] = 23;
-                initial_pits[9] = 3;
-                initial_pits[10] = 3;
-                initial_pits[11] = 3;
+            	// specific setup
+            	initial_pits[8] = 7;
+            	initial_pits[9] = 4;
+            	initial_pits[10] = 4;
+            	initial_pits[11] = 3;
+            	initial_pits[12] = 3;
+            	initial_pits[13] = 2;
+            	initial_pits[14] = 9;
             }
 
             return new CCMove(initial_pits);
@@ -94,18 +100,24 @@ public class s260415297Player extends Player {
     // simple method to find the best move for only one seed sow
     private int bestMove(int[][] board) {
     	
-    	int depth = 7;
-    	int mostSeedsTaken = 0;
-		int mostSeedsMoved = 0;
+    	int depth = 5;
+    	int mostSeedsTaken = -1000;
 		int bestMoveTaken = 0;
-		int bestMoveMoved = 0;
 		int j = 0;
     	
     	// go through all seed pits once
     	for (int i = 0; i < board[0].length; i++) {
     		
+    		// if second player must play specific move to increase winning chance
+    		if (board[0][8] == 7 && board[0][9] == 4 && board[0][10] == 4 && board[0][11] == 3 &&
+    				board[0][12] == 3 && board[0][13] == 2 && board[0][14] == 9) {
+    			bestMoveTaken = 5;
+    			break;
+    		}
+    		
     		// keep track of the next move location
     		int nextMove = i;
+    		int cycleTracker = 0;
     		
     		// if invalid move then continue
     		if (board[0][i] < 2) {
@@ -114,12 +126,6 @@ public class s260415297Player extends Player {
     		
     		// create a board that can be updated
     		int[][] updatedBoard;
-    		
-    		// if no good moves then move the pit that has the most seeds contained
-    		if (mostSeedsMoved < board[0][i]) {
-    			mostSeedsMoved = board[0][i];
-    			bestMoveMoved = j;
-    		}
     		
     		// handles the most amount of seeds captured by a play
     		int captureMade = captureAmount(i, board, true);
@@ -136,7 +142,7 @@ public class s260415297Player extends Player {
     		}
     		
     		// go through the relay and capture loop until the end
-    		while (updatedBoard[0][nextMove] > 1) {
+    		while (updatedBoard[0][nextMove] > 1 && cycleTracker < 200) {
     			
     			// play the move and update the board
     			captureMade = captureMade + captureAmount(nextMove, updatedBoard, true);
@@ -154,7 +160,9 @@ public class s260415297Player extends Player {
 
     			// set previous for next round
     			previousCapture = captureMade;
-    				
+    			
+    			// check for infinite issue
+    			cycleTracker++;
     		} 		
     		
     		// check winning condition
@@ -175,8 +183,8 @@ public class s260415297Player extends Player {
     		int bestMiniMax = minimax(depth,updatedBoard,false);
     		
     		// make sure to make the best move
-    		if (mostSeedsTaken < captureMade + bestMiniMax) {
-    			mostSeedsTaken = captureMade + bestMiniMax;
+    		if (mostSeedsTaken < bestMiniMax + captureMade + cycleTracker) {
+    			mostSeedsTaken = bestMiniMax + captureMade + cycleTracker;
     			bestMoveTaken = j;
     		}
     		
@@ -184,27 +192,97 @@ public class s260415297Player extends Player {
     		j=j+1;
     	}
     	
-    	if (mostSeedsTaken > 0) {
-        	return bestMoveTaken;
-        } else {
-        	return bestMoveMoved;
-        }
+        return bestMoveTaken;
+
     }
     
     // minimax search
     private int minimax(int depth, int[][] board, boolean maxPlayer) {
-    	
-    	// if depth reached then return
-    	if (depth == 0) {
-    		return 0;
-    	}
-    	
+    	    	
     	// setup the trackers
-    	int bestMove = 0;
-    	boolean bestMoveChecked = false;
+    	int bestMove = -1000;
     	int p1 = 0;
     	if (!maxPlayer) {
     		p1 = 1;
+    		bestMove = 1000;
+    	}
+    	
+    	
+    	// return the best or worse value that can be returned
+    	if (depth == 0) {		
+    		
+    		int mostSeedsTaken = -1000;
+    		
+    		// go through all seed pits once, same approach as before but a little different for minimax
+        	for (int i = 0; i < board[p1].length; i++) {
+        		
+        		// keep track of the next move location
+        		int nextMove = i;
+        		int[][] updatedBoard;
+        		int cycleTracker = 0;
+        		
+        		// if invalid move then continue
+        		if (board[p1][i] < 2) {
+        			continue;
+        		}
+        		
+        		// handles the most amount of seeds captured by a play
+        		int captureMade = captureAmount(i, board, maxPlayer);
+        		int previousCapture = captureMade;
+        		int prevMove = 0;
+        		
+        		// if a capture made then need to deal with different update of board
+        		updatedBoard = updateBoard(i,board, maxPlayer);
+        		boolean previousWasACapture = captureMade > 0;
+        		
+        		// next move will be somewhere new in the board
+        		if (!previousWasACapture) {
+        			nextMove = (nextMove + board[p1][i]) % 16;
+        		}
+        		
+        		// go through the relay and capture loop until the end
+        		while (updatedBoard[p1][nextMove] > 1 && cycleTracker < 200) {
+        			
+        			// play the move and update the board
+        			captureMade = captureMade + captureAmount(nextMove, updatedBoard, maxPlayer);
+        			previousCapture = captureMade - previousCapture;
+        			prevMove = nextMove;
+        			
+        			// check for next move
+        			previousWasACapture = previousCapture > 0;
+        			if (!previousWasACapture) {
+        				nextMove = (prevMove + updatedBoard[p1][prevMove]) % 16;
+        			}
+        			
+        			// update the board after all work computed
+        			updatedBoard = updateBoard(prevMove, updatedBoard, maxPlayer);
+
+        			// set previous for next round
+        			previousCapture = captureMade;
+        			
+        			// check for infinite issue
+        			cycleTracker++;
+        		} 	
+        		
+        		// check for winning condition on each stage
+        		boolean winCheck = true;
+        		for (int a = 0; a < updatedBoard[p1].length; a++) {
+        			if (updatedBoard[p1][a] > 1) {
+        				winCheck = false;
+        				break;
+        			}
+        		}
+        		if (winCheck) {
+        			return 100;
+        		}
+        		
+            	// either player wants to make the bestmove
+            	if (mostSeedsTaken < captureMade + cycleTracker + checkPositioning(updatedBoard, maxPlayer)) {
+            		mostSeedsTaken = captureMade + cycleTracker + checkPositioning(updatedBoard, maxPlayer);
+            	}
+        	}
+    	
+    		return mostSeedsTaken;
     	}
     	
     	// go through all seed pits once, same approach as before but a little different for minimax
@@ -213,8 +291,8 @@ public class s260415297Player extends Player {
     		// keep track of the next move location
     		int nextMove = i;
     		int[][] updatedBoard;
-    		int mostSeedsTaken = 0;
     		int infiniteTracker = 0;
+    		int move;
     		
     		// if invalid move then continue
     		if (board[p1][i] < 2) {
@@ -257,50 +335,28 @@ public class s260415297Player extends Player {
     			
     			// check for infinite issue
     			infiniteTracker++;
-    		} 	
-    		
-    		// check for winning condition on each stage
-    		boolean winCheck = true;
-    		for (int a = 0; a < updatedBoard[p1].length; a++) {
-    			if (updatedBoard[p1][a] > 1) {
-    				winCheck = false;
-    				break;
-    			}
-    		}
-    		if (winCheck) {
-    			if (maxPlayer) {
-            		return 36;
-            	} else {
-            		return -36;
-            	}
-    		}
-    		
+    		} 		
     		
     		// search other moves with minimax and make the appropriate move
     		if (maxPlayer) {
-        		mostSeedsTaken =  minimax(depth-1, updatedBoard, !maxPlayer) + captureMade;
+        		move =  minimax(depth-1, updatedBoard, false);
         		
         		// if max player then want to make the best move
-        		if (mostSeedsTaken < bestMove) {
-        			bestMove = mostSeedsTaken;
+        		if (bestMove < move) {
+        			bestMove = move;
         		}
+        		
         	} else {
-        		mostSeedsTaken =  minimax(depth-1, updatedBoard, !maxPlayer) - captureMade;
+        		move =  minimax(depth-1, updatedBoard, true);
         		
         		// if min player then want to make the worst move
-        		if (mostSeedsTaken > bestMove) {
-        			bestMove = mostSeedsTaken;
+        		if (bestMove > move) {
+        			bestMove = move;
         		}
         	}
-    		
-    		// simple check to make sure some valid value is always returned
-    		if (!bestMoveChecked) {
-    			bestMove = mostSeedsTaken;
-    			bestMoveChecked = true;
-    		}
     	}
     	
-    	// return the best or worse value that can be returned
+    	// if not at depth then just return the value
     	return bestMove;
     }
     
@@ -481,5 +537,39 @@ public class s260415297Player extends Player {
 		}
 		
     	return captured;
+    }
+    
+    // private method that checks the position of the board, try to limit high value captures
+    private int checkPositioning (int[][] board, boolean maxPlayer) {
+    	
+    	// tracks the board rating
+    	double boardRating = 0;
+    	
+    	// check who is first player
+    	int p1 = 0;
+    	if (!maxPlayer) {
+    		p1 = 1;
+    	}
+    	
+    	// check how many seeds exists on the board
+    	int totalSeeds = 0;
+    	for (int j = 0; j < board[p1].length; j++) {
+    		totalSeeds = totalSeeds + board[p1][j];
+    	} 		
+
+    	// check through each column
+    	double averageSeedsPerColumn = totalSeeds / 8;
+    	
+    	// check each column for risky seed captures
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][0] + board[p1][15]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][1] + board[p1][14]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][2] + board[p1][13]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][3] + board[p1][12]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][4] + board[p1][11]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][5] + board[p1][10]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][6] + board[p1][9]));
+    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][7] + board[p1][8]));
+    	
+    	return (int)boardRating;
     }
 }
