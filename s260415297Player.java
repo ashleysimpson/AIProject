@@ -1,5 +1,8 @@
 // first thing i did was find the best move and always choose that for only one level
 // second i added the checking for multiple levels on the same move selection
+// third implement minimax (monday-tuesday)
+// fourth implement alphabeta (wednesday-friday)
+// fifth implement machine learning? (saturday-sunday) and figure out a good starting board config
 
 package omweso;
 //TODO this needs FIXXXXXIIIINNNNGGGGGGGG
@@ -63,25 +66,23 @@ public class s260415297Player extends Player {
             int num_seeds = CCBoardState.NUM_INITIAL_SEEDS;
 
             if(board_state.playFirst()){
-                // If we're going to play first in this game, choose one random way of setting up.
-                // Throw each seed in a random pit that we control.
-                for(int i = 0; i < num_seeds; i++){
-                    int pit = rand.nextInt(2 * CCBoardState.SIZE);
-                    initial_pits[pit]++;
-                }
+                // specific setup
+                initial_pits[7] = 23;
+                initial_pits[9] = 3;
+                initial_pits[10] = 3;
+                initial_pits[11] = 3;   
             }else{
-                // If we're going to play second this game, choose another random way of setting up.
-                // Throw each seed in a random pit that we control, but in the row closest to us.
-                for(int i = 0; i < num_seeds; i++){
-                    int pit = rand.nextInt(CCBoardState.SIZE);
-                    initial_pits[pit]++;
-                }
+                // specific setup
+            	initial_pits[7] = 23;
+                initial_pits[9] = 3;
+                initial_pits[10] = 3;
+                initial_pits[11] = 3;
             }
 
             return new CCMove(initial_pits);
         }else{
-            // Play a normal turn.
-            ArrayList<CCMove> moves = board_state.getLegalMoves();       
+            // Play a normal turn
+            ArrayList<CCMove> moves = board_state.getLegalMoves();
             
             int[][] board = board_state.getBoard();
             int choice = bestMove(board);
@@ -93,17 +94,15 @@ public class s260415297Player extends Player {
     // simple method to find the best move for only one seed sow
     private int bestMove(int[][] board) {
     	
+    	int depth = 7;
     	int mostSeedsTaken = 0;
-    	int mostSeedsMoved = 0;
-    	int bestMoveTaken = 0;
-    	int bestMoveMoved = 0;
-    	int j = 0;
+		int mostSeedsMoved = 0;
+		int bestMoveTaken = 0;
+		int bestMoveMoved = 0;
+		int j = 0;
     	
     	// go through all seed pits once
     	for (int i = 0; i < board[0].length; i++) {
-    		
-    		// counter for infinite moves
-    		int infiniteCounter = 0;
     		
     		// keep track of the next move location
     		int nextMove = i;
@@ -123,11 +122,12 @@ public class s260415297Player extends Player {
     		}
     		
     		// handles the most amount of seeds captured by a play
-    		int captureMade = captureAmount(i, board);
+    		int captureMade = captureAmount(i, board, true);
     		int previousCapture = captureMade;
+    		int prevMove = 0;
     		
     		// if a capture made then need to deal with different update of board
-    		updatedBoard = updateBoard(i,board);
+    		updatedBoard = updateBoard(i,board, true);
     		boolean previousWasACapture = captureMade > 0;
     		
     		// next move will be somewhere new in the board
@@ -136,30 +136,47 @@ public class s260415297Player extends Player {
     		}
     		
     		// go through the relay and capture loop until the end
-    		while (updatedBoard[0][nextMove] > 0) {
+    		while (updatedBoard[0][nextMove] > 1) {
     			
     			// play the move and update the board
-    			captureMade = captureMade + captureAmount(nextMove, updatedBoard);
+    			captureMade = captureMade + captureAmount(nextMove, updatedBoard, true);
     			previousCapture = captureMade - previousCapture;
+    			prevMove = nextMove;
     			
     			// check for next move
     			previousWasACapture = previousCapture > 0;
     			if (!previousWasACapture) {
-    				nextMove = (nextMove + updatedBoard[0][nextMove]) % 16;
+    				nextMove = (prevMove + updatedBoard[0][prevMove]) % 16;
     			}
     			
     			// update the board after all work computed
-    			updatedBoard = updateBoard(nextMove, updatedBoard);
+    			updatedBoard = updateBoard(prevMove, updatedBoard, true);
 
     			// set previous for next round
     			previousCapture = captureMade;
     				
-    			infiniteCounter++;
+    		} 		
+    		
+    		// check winning condition
+    		boolean winCheck = true;
+    		for (int a = 0; a < updatedBoard[0].length; a++) {
+    			if (updatedBoard[0][a] > 1) {
+    				winCheck = false;
+    				break;
+    			}
+    		}
+    		if (winCheck) {
+    			mostSeedsTaken = 100;
+    			bestMoveTaken = j;
+    			break;
     		}
     		
+    		// call minimax from this point
+    		int bestMiniMax = minimax(depth,updatedBoard,false);
+    		
     		// make sure to make the best move
-    		if (mostSeedsTaken < captureMade) {
-    			mostSeedsTaken = captureMade;
+    		if (mostSeedsTaken < captureMade + bestMiniMax) {
+    			mostSeedsTaken = captureMade + bestMiniMax;
     			bestMoveTaken = j;
     		}
     		
@@ -168,14 +185,136 @@ public class s260415297Player extends Player {
     	}
     	
     	if (mostSeedsTaken > 0) {
-    		return bestMoveTaken;
-    	} else {
-    		return bestMoveMoved;
-    	}
+        	return bestMoveTaken;
+        } else {
+        	return bestMoveMoved;
+        }
     }
     
+    // minimax search
+    private int minimax(int depth, int[][] board, boolean maxPlayer) {
+    	
+    	// if depth reached then return
+    	if (depth == 0) {
+    		return 0;
+    	}
+    	
+    	// setup the trackers
+    	int bestMove = 0;
+    	boolean bestMoveChecked = false;
+    	int p1 = 0;
+    	if (!maxPlayer) {
+    		p1 = 1;
+    	}
+    	
+    	// go through all seed pits once, same approach as before but a little different for minimax
+    	for (int i = 0; i < board[p1].length; i++) {
+    		
+    		// keep track of the next move location
+    		int nextMove = i;
+    		int[][] updatedBoard;
+    		int mostSeedsTaken = 0;
+    		int infiniteTracker = 0;
+    		
+    		// if invalid move then continue
+    		if (board[p1][i] < 2) {
+    			continue;
+    		}
+    		
+    		// handles the most amount of seeds captured by a play
+    		int captureMade = captureAmount(i, board, maxPlayer);
+    		int previousCapture = captureMade;
+    		int prevMove = 0;
+    		
+    		// if a capture made then need to deal with different update of board
+    		updatedBoard = updateBoard(i,board, maxPlayer);
+    		boolean previousWasACapture = captureMade > 0;
+    		
+    		// next move will be somewhere new in the board
+    		if (!previousWasACapture) {
+    			nextMove = (nextMove + board[p1][i]) % 16;
+    		}
+    		
+    		// go through the relay and capture loop until the end
+    		while (updatedBoard[p1][nextMove] > 1 && infiniteTracker < 200) {
+    			
+    			// play the move and update the board
+    			captureMade = captureMade + captureAmount(nextMove, updatedBoard, maxPlayer);
+    			previousCapture = captureMade - previousCapture;
+    			prevMove = nextMove;
+    			
+    			// check for next move
+    			previousWasACapture = previousCapture > 0;
+    			if (!previousWasACapture) {
+    				nextMove = (prevMove + updatedBoard[p1][prevMove]) % 16;
+    			}
+    			
+    			// update the board after all work computed
+    			updatedBoard = updateBoard(prevMove, updatedBoard, maxPlayer);
+
+    			// set previous for next round
+    			previousCapture = captureMade;
+    			
+    			// check for infinite issue
+    			infiniteTracker++;
+    		} 	
+    		
+    		// check for winning condition on each stage
+    		boolean winCheck = true;
+    		for (int a = 0; a < updatedBoard[p1].length; a++) {
+    			if (updatedBoard[p1][a] > 1) {
+    				winCheck = false;
+    				break;
+    			}
+    		}
+    		if (winCheck) {
+    			if (maxPlayer) {
+            		return 36;
+            	} else {
+            		return -36;
+            	}
+    		}
+    		
+    		
+    		// search other moves with minimax and make the appropriate move
+    		if (maxPlayer) {
+        		mostSeedsTaken =  minimax(depth-1, updatedBoard, !maxPlayer) + captureMade;
+        		
+        		// if max player then want to make the best move
+        		if (mostSeedsTaken < bestMove) {
+        			bestMove = mostSeedsTaken;
+        		}
+        	} else {
+        		mostSeedsTaken =  minimax(depth-1, updatedBoard, !maxPlayer) - captureMade;
+        		
+        		// if min player then want to make the worst move
+        		if (mostSeedsTaken > bestMove) {
+        			bestMove = mostSeedsTaken;
+        		}
+        	}
+    		
+    		// simple check to make sure some valid value is always returned
+    		if (!bestMoveChecked) {
+    			bestMove = mostSeedsTaken;
+    			bestMoveChecked = true;
+    		}
+    	}
+    	
+    	// return the best or worse value that can be returned
+    	return bestMove;
+    }
+    
+    
     // updates the board based on a move made that captures
-    private int[][] updateBoard(int selection, int[][] oldBoard) {
+    private int[][] updateBoard(int selection, int[][] oldBoard, boolean isMaxPlayer) {
+    	
+    	// setup the board conditions for max and min players
+    	int p1 = 0;
+    	int p2 = 1;
+    	if (!isMaxPlayer) {
+    		p1 = 1;
+    		p2 = 0;
+    	}
     	
     	// create a new board to return
     	int[][] board = new int[2][16];
@@ -185,149 +324,157 @@ public class s260415297Player extends Player {
     		} 		
     	}
     	// calculate the last pit
-    	int lastPit = (selection + board[0][selection]) % 16;
+    	int lastPit = (selection + board[p1][selection]) % 16;
     	
     	// remove the pits from the selection pit
-    	board[0][selection] = 0;
+    	board[p1][selection] = 0;
     	
     	// fill in pieces that get added as the move is taken
-    	for (int i = 1; i < oldBoard[0][selection]; i++) {
-    		board[0][(i+selection) % 16] = board[0][(i+selection) % 16] + 1;
+    	for (int i = 1; i < oldBoard[p1][selection]; i++) {
+    		board[p1][(i+selection) % 16] = board[p1][(i+selection) % 16] + 1;
     	}
     	
     	// check for each condition where capture occurs and update the board
     	// also update board where capture doesn't occur
 		if (lastPit == 15) {
-			if (board[0][15] > 0 && board[1][8] > 0 && board[1][7] > 0) {
-				board[0][selection] = board[1][8] + board[1][7];
-				board[0][15] = board[0][15] + 1;
-				board[1][8] = 0;
-				board[1][7] = 0;
+			if (board[p1][15] > 0 && board[p2][8] > 0 && board[p2][7] > 0) {
+				board[p1][selection] = board[p2][8] + board[p2][7];
+				board[p1][15] = board[p1][15] + 1;
+				board[p2][8] = 0;
+				board[p2][7] = 0;
 			} else {
 				board[0][15] = board[0][15] + 1;
 			}
 		} else if (lastPit == 14) {
-			if (board[0][14] > 0 && board[1][6] > 0 && board[1][9] > 0) {
-				board[0][selection] = board[1][6] + board[1][9];
-				board[0][14] = board[0][14] + 1;
-				board[1][6] = 0;
-				board[1][9] = 0;
+			if (board[p1][14] > 0 && board[p2][6] > 0 && board[p2][9] > 0) {
+				board[p1][selection] = board[p2][6] + board[p2][9];
+				board[p1][14] = board[p1][14] + 1;
+				board[p2][6] = 0;
+				board[p2][9] = 0;
 			} else {
 				board[0][14] = board[0][14] + 1;
 			}
 		} else if (lastPit == 13) {
-			if (board[0][13] > 0 && board[1][5] > 0 && board[1][10] > 0) {
-				board[0][selection] = board[1][5] + board[1][10];
-				board[0][13] = board[0][13] + 1;
-				board[1][5] = 0;
-				board[1][10] = 0;
+			if (board[p1][13] > 0 && board[p2][5] > 0 && board[p2][10] > 0) {
+				board[p1][selection] = board[p2][5] + board[p2][10];
+				board[p1][13] = board[p1][13] + 1;
+				board[p2][5] = 0;
+				board[p2][10] = 0;
 			} else {
 				board[0][13] = board[0][13] + 1;
 			}
 		} else if (lastPit == 12) {
-			if (board[0][12] > 0 && board[1][4] > 0 && board[1][11] > 0) {
-				board[0][selection] = board[1][4] + board[1][11];
-				board[0][12] = board[0][12] + 1;
-				board[1][4] = 0;
-				board[1][11] = 0;
+			if (board[p1][12] > 0 && board[p2][4] > 0 && board[p2][11] > 0) {
+				board[p1][selection] = board[p2][4] + board[p2][11];
+				board[p1][12] = board[p1][12] + 1;
+				board[p2][4] = 0;
+				board[p2][11] = 0;
 			} else {
 				board[0][12] = board[0][12] + 1;
 			}
 		} else if (lastPit == 11) {
-			if (board[0][11] > 0 && board[1][3] > 0 && board[1][12] > 0) {
-				board[0][selection] = board[1][3] + board[1][12];
-				board[0][11] = board[0][11] + 1;
-				board[1][3] = 0;
-				board[1][12] = 0;
+			if (board[p1][11] > 0 && board[p2][3] > 0 && board[p2][12] > 0) {
+				board[p1][selection] = board[p2][3] + board[p2][12];
+				board[p1][11] = board[p1][11] + 1;
+				board[p2][3] = 0;
+				board[p2][12] = 0;
 			} else {
 				board[0][11] = board[0][11] + 1;
 			}
 		} else if (lastPit == 10) {
-			if (board[0][10] > 0 && board[1][2] > 0 && board[1][13] > 0) {
-				board[0][selection] = board[1][2] + board[1][13];
-				board[0][10] = board[0][10] + 1;
-				board[1][2] = 0;
-				board[1][13] = 0;
+			if (board[p1][10] > 0 && board[p2][2] > 0 && board[p2][13] > 0) {
+				board[p1][selection] = board[p2][2] + board[p2][13];
+				board[p1][10] = board[p1][10] + 1;
+				board[p2][2] = 0;
+				board[p2][13] = 0;
 			} else {
 				board[0][10] = board[0][10] + 1;
 			}
 		} else if (lastPit == 9) {
-			if (board[0][9] > 0 && board[1][1] > 0 && board[1][14] > 0) {
-				board[0][selection] = board[1][1] + board[1][14];
-				board[0][9] = board[0][9] + 1;
-				board[1][1] = 0;
-				board[1][14] = 0;
+			if (board[p1][9] > 0 && board[p2][1] > 0 && board[p2][14] > 0) {
+				board[p1][selection] = board[p2][1] + board[p2][14];
+				board[p1][9] = board[p1][9] + 1;
+				board[p2][1] = 0;
+				board[p2][14] = 0;
 			} else {
 				board[0][9] = board[0][9] + 1;
 			}
 		} else if (lastPit == 8) {
-			if (board[0][8] > 0 && board[1][0] > 0 && board[1][15] > 0) {
-				board[0][selection] = board[1][0] + board[1][15];
-				board[0][8] = board[0][8] + 1;
-				board[1][0] = 0;
-				board[1][15] = 0;
+			if (board[p1][8] > 0 && board[p2][0] > 0 && board[p2][15] > 0) {
+				board[p1][selection] = board[p2][0] + board[p2][15];
+				board[p1][8] = board[p1][8] + 1;
+				board[p2][0] = 0;
+				board[p2][15] = 0;
 			} else {
 				board[0][8] = board[0][8] + 1;
 			}
 		} else if (lastPit == 7) {
-			board[0][7] = board[0][7] + 1;
+			board[p1][7] = board[p1][7] + 1;
 		} else if (lastPit == 6) {
-			board[0][6] = board[0][6] + 1;
+			board[p1][6] = board[p1][6] + 1;
 		} else if (lastPit == 5) {
-			board[0][5] = board[0][5] + 1;
+			board[p1][5] = board[p1][5] + 1;
 		} else if (lastPit == 4) {
-			board[0][4] = board[0][4] + 1;
+			board[p1][4] = board[p1][4] + 1;
 		} else if (lastPit == 3) {
-			board[0][3] = board[0][3] + 1;
+			board[p1][3] = board[p1][3] + 1;
 		} else if (lastPit == 2) {
-			board[0][2] = board[0][2] + 1;
+			board[p1][2] = board[p1][2] + 1;
 		} else if (lastPit == 1) {
-			board[0][1] = board[0][1] + 1;
+			board[p1][1] = board[p1][1] + 1;
 		} else {
-			board[0][0] = board[0][0] + 1;
+			board[p1][0] = board[p1][0] + 1;
 		}
 		
 		return board;
     }
     
     // returns the amount of captured seeds from this pit (if any)
-    private int captureAmount(int selection, int[][] board) {
+    private int captureAmount(int selection, int[][] board, boolean isMaxPlayer) {
+    	
+    	// setup the board conditions for max and min players
+    	int p1 = 0;
+    	int p2 = 1;
+    	if (!isMaxPlayer) {
+    		p1 = 1;
+    		p2 = 0;
+    	}
     	
     	int captured = 0;
-    	int lastPit = (selection + board[0][selection]) % 16;
+    	int lastPit = (selection + board[p1][selection]) % 16;
     	
     	// check for each condition where capture occurs
 		if (lastPit == 15) {
-			if (board[0][15] > 0 && board[1][8] > 0 && board[1][7] > 0) {
-				captured = board[1][8] + board[1][7];
+			if (board[p1][15] > 0 && board[p2][8] > 0 && board[p2][7] > 0) {
+				captured = board[p2][8] + board[p2][7];
 			}
 		} else if (lastPit == 14) {
-			if (board[0][14] > 0 && board[1][6] > 0 && board[1][9] > 0) {
-				captured = board[1][6] + board[1][9];
+			if (board[p1][14] > 0 && board[p2][6] > 0 && board[p2][9] > 0) {
+				captured = board[p2][6] + board[p2][9];
 			}
 		} else if (lastPit == 13) {
-			if (board[0][13] > 0 && board[1][5] > 0 && board[1][10] > 0) {
-				captured = board[1][5] + board[1][10];
+			if (board[p1][13] > 0 && board[p2][5] > 0 && board[p2][10] > 0) {
+				captured = board[p2][5] + board[p2][10];
 			}
 		} else if (lastPit == 12) {
-			if (board[0][12] > 0 && board[1][4] > 0 && board[1][11] > 0) {
-				captured = board[1][4] + board[1][11];
+			if (board[p1][12] > 0 && board[p2][4] > 0 && board[p2][11] > 0) {
+				captured = board[p2][4] + board[p2][11];
 			}
 		} else if (lastPit == 11) {
-			if (board[0][11] > 0 && board[1][3] > 0 && board[1][12] > 0) {
-				captured = board[1][3] + board[1][12];
+			if (board[p1][11] > 0 && board[p2][3] > 0 && board[p2][12] > 0) {
+				captured = board[p2][3] + board[p2][12];
 			}
 		} else if (lastPit == 10) {
-			if (board[0][10] > 0 && board[1][2] > 0 && board[1][13] > 0) {
-				captured = board[1][2] + board[1][13];
+			if (board[p1][10] > 0 && board[p2][2] > 0 && board[p2][13] > 0) {
+				captured = board[p2][2] + board[p2][13];
 			}
 		} else if (lastPit == 9) {
-			if (board[0][9] > 0 && board[1][1] > 0 && board[1][14] > 0) {
-				captured = board[1][1] + board[1][14];
+			if (board[p1][9] > 0 && board[p2][1] > 0 && board[p2][14] > 0) {
+				captured = board[p2][1] + board[p2][14];
 			}
 		} else if (lastPit == 8) {
-			if (board[0][8] > 0 && board[1][0] > 0 && board[1][15] > 0) {
-				captured = board[1][0] + board[1][15];
+			if (board[p1][8] > 0 && board[p2][0] > 0 && board[p2][15] > 0) {
+				captured = board[p2][0] + board[p2][15];
 			}
 		} else {
 			captured = 0;
