@@ -78,8 +78,8 @@ public class s260415297Player extends Player {
             	// specific setup
             	initial_pits[8] = 7;
             	initial_pits[9] = 4;
-            	initial_pits[10] = 4;
-            	initial_pits[11] = 3;
+            	initial_pits[10] = 3;
+            	initial_pits[11] = 4;
             	initial_pits[12] = 3;
             	initial_pits[13] = 2;
             	initial_pits[14] = 9;
@@ -100,7 +100,7 @@ public class s260415297Player extends Player {
     // simple method to find the best move for only one seed sow
     private int bestMove(int[][] board) {
     	
-    	int depth = 5;
+    	int depth = 8;
     	int mostSeedsTaken = -1000;
 		int bestMoveTaken = 0;
 		int j = 0;
@@ -108,7 +108,7 @@ public class s260415297Player extends Player {
     	// go through all seed pits once
     	for (int i = 0; i < board[0].length; i++) {
     		
-    		// if second player must play specific move to increase winning chance
+    		// player must play specific move to increase winning chance
     		if (board[0][8] == 7 && board[0][9] == 4 && board[0][10] == 4 && board[0][11] == 3 &&
     				board[0][12] == 3 && board[0][13] == 2 && board[0][14] == 9) {
     			bestMoveTaken = 5;
@@ -180,11 +180,11 @@ public class s260415297Player extends Player {
     		}
     		
     		// call minimax from this point
-    		int bestMiniMax = minimax(depth,updatedBoard,false);
+    		int bestAlphaBeta = alphabeta(depth,updatedBoard,-10000,10000,false);
     		
     		// make sure to make the best move
-    		if (mostSeedsTaken < bestMiniMax + captureMade + cycleTracker) {
-    			mostSeedsTaken = bestMiniMax + captureMade + cycleTracker;
+    		if (mostSeedsTaken < bestAlphaBeta + captureMade + cycleTracker + checkPositioning(updatedBoard,true)) {
+    			mostSeedsTaken = bestAlphaBeta + captureMade + cycleTracker + checkPositioning(updatedBoard,true);
     			bestMoveTaken = j;
     		}
     		
@@ -196,15 +196,15 @@ public class s260415297Player extends Player {
 
     }
     
-    // minimax search
-    private int minimax(int depth, int[][] board, boolean maxPlayer) {
+    // alphabeta search
+    private int alphabeta(int depth, int[][] board, int alpha, int beta, boolean maxPlayer) {
     	    	
     	// setup the trackers
-    	int bestMove = -1000;
+    	int bestMove = -10000;
     	int p1 = 0;
     	if (!maxPlayer) {
     		p1 = 1;
-    		bestMove = 1000;
+    		bestMove = 10000;
     	}
     	
     	
@@ -277,8 +277,8 @@ public class s260415297Player extends Player {
         		}
         		
             	// either player wants to make the bestmove
-            	if (mostSeedsTaken < captureMade + cycleTracker + checkPositioning(updatedBoard, maxPlayer)) {
-            		mostSeedsTaken = captureMade + cycleTracker + checkPositioning(updatedBoard, maxPlayer);
+            	if (mostSeedsTaken < captureMade + checkPositioning(updatedBoard, maxPlayer)) {
+            		mostSeedsTaken = captureMade + checkPositioning(updatedBoard, maxPlayer);
             	}
         	}
     	
@@ -339,19 +339,37 @@ public class s260415297Player extends Player {
     		
     		// search other moves with minimax and make the appropriate move
     		if (maxPlayer) {
-        		move =  minimax(depth-1, updatedBoard, false);
+        		move =  alphabeta(depth-1, updatedBoard,alpha,beta,false);
         		
         		// if max player then want to make the best move
         		if (bestMove < move) {
         			bestMove = move;
         		}
         		
+        		// alpha beta algorithm
+        		if (alpha < bestMove) {
+        			alpha = bestMove;
+        		}  
+        		// if beta equal or greater than alpha then can prune
+        		if (beta <= alpha) {
+        			break;
+        		}
+        		
         	} else {
-        		move =  minimax(depth-1, updatedBoard, true);
+        		move =  alphabeta(depth-1, updatedBoard,alpha,beta,true);
         		
         		// if min player then want to make the worst move
         		if (bestMove > move) {
         			bestMove = move;
+        		}
+        		
+        		// alpha beta algorithm
+        		if (beta > bestMove) {
+        			beta = bestMove;
+        		}
+        		// if beta equal or greater than alpah then can prune
+        		if (beta <= alpha) {
+        			break;
         		}
         	}
     	}
@@ -539,7 +557,7 @@ public class s260415297Player extends Player {
     	return captured;
     }
     
-    // private method that checks the position of the board, try to limit high value captures
+    // private method that checks the position of the board, try to limit high value captures by opponent
     private int checkPositioning (int[][] board, boolean maxPlayer) {
     	
     	// tracks the board rating
@@ -547,20 +565,30 @@ public class s260415297Player extends Player {
     	
     	// check who is first player
     	int p1 = 0;
+    	int p2 = 1;
     	if (!maxPlayer) {
     		p1 = 1;
+    		p2 = 0;
     	}
+    	int opponentFactor = 2;
+    	int localFactor = 3;
     	
     	// check how many seeds exists on the board
     	int totalSeeds = 0;
     	for (int j = 0; j < board[p1].length; j++) {
     		totalSeeds = totalSeeds + board[p1][j];
-    	} 		
+    	}
+    	
+    	// check how many seeds exists on the board, used to see the seed difference
+    	int totalSeeds2 = 0;
+    	for (int j = 0; j < board[p2].length; j++) {
+    		totalSeeds2 = totalSeeds2 + board[p2][j];
+    	}
 
     	// check through each column
     	double averageSeedsPerColumn = totalSeeds / 8;
     	
-    	// check each column for risky seed captures
+    	// check each column for risky seed captures that are available
     	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][0] + board[p1][15]));
     	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][1] + board[p1][14]));
     	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][2] + board[p1][13]));
@@ -570,6 +598,78 @@ public class s260415297Player extends Player {
     	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][6] + board[p1][9]));
     	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][7] + board[p1][8]));
     	
-    	return (int)boardRating;
+    	// check for protected pits
+    	int protectedPits = 0;
+    	if (board[p1][0] ==  0 || board[p1][15] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][1] ==  0 || board[p1][14] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][2] ==  0 || board[p1][13] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][3] ==  0 || board[p1][12] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][4] ==  0 || board[p1][11] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][5] ==  0 || board[p1][10] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][6] ==  0 || board[p1][9] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	if (board[p1][7] ==  0 || board[p1][8] == 0) {
+    		protectedPits = protectedPits + localFactor;
+    	} else {
+    		protectedPits = protectedPits - localFactor;
+    	}
+    	
+    	// check for opponent capturable pits
+    	// check for protected pits
+    	int opponentPits = 0;
+    	if (board[p2][0] >  0 && board[p2][15] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][1] >  0 && board[p2][14] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][2] >  0 && board[p2][13] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][3] >  0 && board[p2][12] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][4] >  0 && board[p2][11] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][5] >  0 && board[p2][10] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][6] >  0 && board[p2][9] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+    	if (board[p2][7] >  0 && board[p2][8] > 0) {
+    		opponentPits = opponentPits + opponentFactor;
+    	}
+
+    	
+    	return (int)boardRating + protectedPits + opponentPits;
     }
 }
