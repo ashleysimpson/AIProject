@@ -185,8 +185,8 @@ public class s260415297Player extends Player {
     		System.out.println("Without " + i + " with value " + bestAlphaBeta); 
     		
     		// make sure to make the best move
-    		if (mostSeedsTaken < bestAlphaBeta + cycleTracker) {
-    			mostSeedsTaken = bestAlphaBeta + cycleTracker;
+    		if (mostSeedsTaken < bestAlphaBeta + captureMade) {
+    			mostSeedsTaken = bestAlphaBeta + captureMade;
     			
     			System.out.println("With " + i + " with value " + mostSeedsTaken); 
     			bestMoveTaken = j;
@@ -519,9 +519,10 @@ public class s260415297Player extends Player {
     	int p2 = 1;
     	
     	// factors used in the program
-    	int opponentFactor = 5;
-    	int localFactor = 3;
+    	int opponentFactor = 2;
+    	int localFactor = 1;
     	int attackingFactor = 2;
+    	int moveFactor = 3;
     	
     	// check how many seeds exists on the board
     	int totalSeeds = 0;
@@ -538,29 +539,8 @@ public class s260415297Player extends Player {
     	// check through each column
     	double averageSeedsPerColumn = totalSeeds / 8;
     	
-    	/*
-    	// check each column for risky seed captures that are available
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][0] + board[p1][15]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][1] + board[p1][14]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][2] + board[p1][13]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][3] + board[p1][12]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][4] + board[p1][11]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][5] + board[p1][10]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][6] + board[p1][9]));
-    	boardRating = boardRating + (averageSeedsPerColumn - (board[p1][7] + board[p1][8]));
-    	*/
-    	/*
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][0] + board[p2][15]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][1] + board[p2][14]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][2] + board[p2][13]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][3] + board[p2][12]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][4] + board[p2][11]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][5] + board[p2][10]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][6] + board[p2][9]));
-    	oppBoardRating = boardRating + (averageSeedsPerColumn + (board[p2][7] + board[p2][8])); */
-    	
     	// check for protected pits, using a specific factor
-    	// protected buts are ones that cannot be captured
+    	// protected pits are ones that cannot be captured
     	int protectedPits = 0;
     	if (board[p1][0] ==  0 || board[p1][15] == 0) {
     		protectedPits = protectedPits + localFactor;
@@ -631,16 +611,24 @@ public class s260415297Player extends Player {
     		opponentPits = opponentPits + opponentFactor;
     	}
     	
-    	// check for pits mostly filled in attacking row
+    	// check for pits that can capture
     	int attackingRow = 0;
     	for (int a = 0; a < board[p1].length; a++) {
-    		if (a < 8) { // attacking row
+    		if (board[p1][(a+board[p1][a]) % 16] > 0 && ((a+board[p1][a]) % 16) >= 8) {
     			attackingRow += attackingFactor;
-    		} else { // bad row
+    		} else {
     			attackingRow -= attackingFactor;
     		}
     	}
-		
+    	
+    	// check for most available moves
+    	int moves = 0;
+    	for (int a = 0; a < board[p1].length; a++) {
+    		if (board[p1][a] > 0) {
+    			moves += moveFactor;
+    		}
+    	}
+    	
     	// return the heuristic value
     	return attackingRow + (totalSeeds - totalSeeds2) + protectedPits + opponentPits;
     	
