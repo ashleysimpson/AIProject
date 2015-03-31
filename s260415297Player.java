@@ -110,7 +110,7 @@ public class s260415297Player extends Player {
     	for (int i = 0; i < board[0].length; i++) {
     		
     		// player must play specific move to increase winning chance
-    		if (board[0][8] == 7 && board[0][9] == 4 && board[0][10] == 4 && board[0][11] == 3 &&
+    		if (board[0][8] == 7 && board[0][9] == 4 && board[0][10] == 3 && board[0][11] == 4 &&
     				board[0][12] == 3 && board[0][13] == 2 && board[0][14] == 9) {
     			bestMoveTaken = 5;
     			break;
@@ -511,18 +511,14 @@ public class s260415297Player extends Player {
     // private method that checks the position of the board, try to limit high value captures by opponent
     private int checkPositioning (int[][] board) {
     	
-    	// tracks the board rating
-    	double boardRating = 0;
-    	double oppBoardRating = 0;
-    	
     	int p1 = 0;
     	int p2 = 1;
     	
     	// factors used in the program
-    	int opponentFactor = 2;
-    	int localFactor = 1;
-    	int attackingFactor = 2;
-    	int moveFactor = 3;
+    	int opponentFactor = 3;
+    	int localFactor = 2;
+    	int attackingFactor = 4;
+    	int moveFactor = 6;
     	
     	// check how many seeds exists on the board
     	int totalSeeds = 0;
@@ -629,8 +625,16 @@ public class s260415297Player extends Player {
     		}
     	}
     	
+    	// check for most available moves
+    	int oppmoves = 0;
+    	for (int a = 0; a < board[p2].length; a++) {
+    		if (board[p2][a] > 0) {
+    			oppmoves -= moveFactor;
+    		}
+    	}
+    	
     	// return the heuristic value
-    	return attackingRow + (totalSeeds - totalSeeds2) + protectedPits + opponentPits;
+    	return attackingRow + moves + oppmoves + (totalSeeds - totalSeeds2) + protectedPits + opponentPits;
     	
     }
 }
